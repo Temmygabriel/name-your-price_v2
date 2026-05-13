@@ -1,0 +1,664 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0A0A0F;
+  color: #F0F0F0;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+}
+::placeholder { color: #555566; }
+
+input, textarea {
+  background: #12121A;
+  color: #F0F0F0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+input:focus, textarea:focus {
+  border-color: #00FF87;
+  box-shadow: 0 0 0 3px rgba(0,255,135,0.1);
+}
+textarea { resize: vertical; min-height: 100px; }
+button { font-family: 'Inter', sans-serif; cursor: pointer; border: none; background: none; }
+
+/* ================================================================
+   APP SHELL
+   ================================================================ */
+.app-root {
+  min-height: 100vh;
+  background: #0A0A0F;
+}
+.app-container {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 1.5rem 5rem;
+}
+
+/* ================================================================
+   SCREEN BASE
+   ================================================================ */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 24px;
+}
+.screen--centered {
+  align-items: center;
+  text-align: center;
+  padding-top: 40px;
+}
+.screen-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  letter-spacing: 0.06em;
+  color: #F0F0F0;
+  line-height: 1.1;
+}
+.screen-sub { font-size: 15px; color: #888899; line-height: 1.5; }
+
+/* ================================================================
+   HERO — full viewport width, grid background
+   ================================================================ */
+.hero-section {
+  background-color: #0A0A0F;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 4rem 1.5rem 3rem;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+}
+.hero-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+.hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(3.5rem, 12vw, 8rem);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  color: #F0F0F0;
+  margin-bottom: 1.5rem;
+}
+.hero-title .highlight-green {
+  background: linear-gradient(135deg, #00FF87, #00D4FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: #888899;
+  margin-bottom: 2.5rem;
+  line-height: 1.7;
+}
+.stat-chips {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.stat-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  gap: 2px;
+  min-width: 80px;
+}
+.stat-chip .num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  color: #00FF87;
+  line-height: 1;
+}
+.stat-chip .lbl {
+  font-size: 0.7rem;
+  color: #888899;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ================================================================
+   LANDING BODY
+   ================================================================ */
+.landing-body {
+  padding: 2.5rem 0;
+}
+.landing-body-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.name-section-label {
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #888899;
+  margin-bottom: 0.25rem;
+}
+.name-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+.name-input-row input { margin: 0; flex: 1; width: auto; }
+.set-btn {
+  background: #1A1A28;
+  color: #F0F0F0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 0 1.25rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.set-btn:hover { background: #1A1A28; border-color: rgba(255,255,255,0.2); }
+.name-set-confirm { font-size: 0.8rem; color: #00FF87; font-weight: 600; }
+.divider-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #555566;
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+}
+.divider-row::before, .divider-row::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.join-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.join-row input { flex: 1; margin: 0; width: auto; }
+.join-btn {
+  background: transparent;
+  color: #F0F0F0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1.2rem;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.join-btn:hover:not(:disabled) { border-color: #00FF87; color: #00FF87; }
+.join-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ================================================================
+   BUTTONS
+   ================================================================ */
+.btn-primary {
+  width: 100%;
+  padding: 0.95rem 1.75rem;
+  background: linear-gradient(135deg, #00FF87, #00D4FF);
+  color: #0A0A0F;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 16px rgba(0,255,135,0.2);
+  font-family: 'Inter', sans-serif;
+}
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 24px rgba(0,255,135,0.3); }
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-outline {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: transparent;
+  color: #F0F0F0;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.btn-outline:hover:not(:disabled) { border-color: rgba(255,255,255,0.3); color: #F0F0F0; }
+.btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 0.95rem 1.75rem;
+  background: #1A1A28;
+  color: #00FF87;
+  border: 1px solid rgba(0,255,135,0.25);
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.btn-secondary:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(0,255,135,0.5); box-shadow: 0 4px 16px rgba(0,255,135,0.1); }
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ready--ready {
+  width: 100%;
+  padding: 0.95rem 1.75rem;
+  background: #00FF87;
+  color: #0A0A0F;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+.btn-ready--unready {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: transparent;
+  color: #888899;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+.btn-ready--unready:hover { border-color: #00FF87; color: #00FF87; }
+.btn-loading { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* ================================================================
+   SPINNER
+   ================================================================ */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ================================================================
+   MISC UI
+   ================================================================ */
+.back-btn {
+  font-size: 14px;
+  color: #888899;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  cursor: pointer;
+  transition: color 0.15s;
+  background: none;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  padding: 0;
+}
+.back-btn:hover { color: #F0F0F0; }
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #888899;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.text-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  background: #12121A;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  color: #F0F0F0;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.text-input:focus { border-color: #00FF87; box-shadow: 0 0 0 3px rgba(0,255,135,0.08); }
+.code-input { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; }
+.error-text { font-size: 14px; color: #FF4D6D; font-weight: 500; }
+.hint-text { font-size: 13px; color: #555566; text-align: center; }
+
+/* ================================================================
+   ROOM CODE BANNER
+   ================================================================ */
+.room-code-banner {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rcode-label { font-size: 11px; color: #888899; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.rcode-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: #F0F0F0; letter-spacing: 0.12em; flex: 1; }
+.rcode-copy { font-size: 12px; font-weight: 600; color: #888899; padding: 4px 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: background 0.15s; background: none; font-family: 'Inter', sans-serif; }
+.rcode-copy:hover { background: rgba(255,255,255,0.06); }
+
+/* ================================================================
+   LOBBY
+   ================================================================ */
+.lobby-header { display: flex; justify-content: space-between; align-items: center; }
+.lobby-title { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.06em; }
+.lobby-header-actions { display: flex; gap: 0.65rem; }
+.lobby-meta { color: #888899; font-size: 0.9rem; }
+.player-list { display: flex; flex-direction: column; gap: 8px; }
+.player-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
+.player-row--me { border-color: rgba(0,255,135,0.3); background: rgba(0,255,135,0.04); }
+.player-row--empty { opacity: 0.35; }
+.player-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: #888899; flex-shrink: 0; }
+.player-name { flex: 1; font-size: 15px; font-weight: 500; }
+.ready-badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 100px; }
+.ready-badge--yes { background: rgba(0,255,135,0.1); color: #00FF87; border: 1px solid rgba(0,255,135,0.25); }
+.ready-badge--no { background: rgba(255,255,255,0.04); color: #888899; border: 1px solid rgba(255,255,255,0.08); }
+.lobby-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* ================================================================
+   SECTION LABELS + ROUND HEADER
+   ================================================================ */
+.round-header { display: flex; align-items: center; gap: 12px; }
+.round-badge { font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 0.1em; background: #1A1A28; color: #F0F0F0; border: 1px solid rgba(255,255,255,0.12); padding: 4px 12px; border-radius: 100px; }
+.round-badge--judging { background: rgba(124,58,237,0.2); color: #A78BFA; border-color: rgba(124,58,237,0.4); }
+.round-meta { font-size: 13px; color: #888899; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #888899; margin-top: 4px; }
+
+/* ================================================================
+   PRODUCT CARD — centrepiece of voting screen
+   ================================================================ */
+.product-card {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.product-cat {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #00D4FF;
+}
+.product-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  color: #F0F0F0;
+  line-height: 1.1;
+}
+.product-price {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 4rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #00FF87;
+}
+.product-price-label {
+  font-size: 12px;
+  color: #555566;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.product-context {
+  font-size: 13px;
+  color: #888899;
+  line-height: 1.6;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ================================================================
+   VERDICT BUTTONS — full-width, colour-coded, centrepiece
+   ================================================================ */
+.verdict-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.verdict-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  transition: all 0.15s;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  text-align: left;
+  width: 100%;
+}
+.verdict-btn:hover { background: rgba(255,255,255,0.05); }
+.verdict-btn--fair { border-color: rgba(0,212,255,0.3); }
+.verdict-btn--fair:hover { border-color: #00D4FF; }
+.verdict-btn--fair.selected { background: rgba(0,212,255,0.12); border-color: #00D4FF; }
+.verdict-btn--overpriced { border-color: rgba(255,77,109,0.3); }
+.verdict-btn--overpriced:hover { border-color: #FF4D6D; }
+.verdict-btn--overpriced.selected { background: rgba(255,77,109,0.12); border-color: #FF4D6D; }
+.verdict-btn--steal { border-color: rgba(0,255,135,0.3); }
+.verdict-btn--steal:hover { border-color: #00FF87; }
+.verdict-btn--steal.selected { background: rgba(0,255,135,0.12); border-color: #00FF87; }
+.verdict-emoji { font-size: 2rem; flex-shrink: 0; }
+.verdict-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.verdict-label { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; }
+.verdict-label--fair { color: #00D4FF; }
+.verdict-label--overpriced { color: #FF4D6D; }
+.verdict-label--steal { color: #00FF87; }
+.verdict-desc { font-size: 13px; color: #888899; }
+.verdict-selected-indicator { font-size: 18px; flex-shrink: 0; }
+
+/* ================================================================
+   SUBMITTED / WAITING STATES
+   ================================================================ */
+.submitted-state { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; max-width: 480px; margin: 0 auto; }
+.submitted-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(0,255,135,0.08); color: #00FF87; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; border: 2px solid rgba(0,255,135,0.25); }
+.waiting-tip { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #888899; }
+.waiting-tip .spinner { border-color: rgba(255,255,255,0.1); border-top-color: #888899; }
+.genlayer-note { font-size: 13px; color: #555566; background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); line-height: 1.5; width: 100%; }
+
+/* Timer banner */
+.timer-banner {
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #00D4FF;
+  line-height: 1.5;
+  text-align: center;
+  width: 100%;
+}
+
+/* ================================================================
+   JUDGING SCREEN (AI calculating)
+   ================================================================ */
+.judging-block {
+  background: rgba(124,58,237,0.08);
+  border: 1.5px solid rgba(124,58,237,0.3);
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+.judging-icon { font-size: 3rem; }
+.judging-title { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.06em; color: #A78BFA; }
+.judging-sub { font-size: 14px; color: #888899; line-height: 1.7; }
+
+/* ================================================================
+   RESULTS
+   ================================================================ */
+.winner-banner { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.winner-banner--mine { background: rgba(0,255,135,0.06); border-color: rgba(0,255,135,0.3); }
+.winner-crown { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 0.04em; color: #F0F0F0; }
+.winner-verdict { display: flex; flex-direction: column; gap: 4px; }
+.winner-verdict-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888899; }
+.winner-verdict-text { font-size: 15px; color: #F0F0F0; line-height: 1.5; }
+.winner-reason { font-size: 13px; color: #888899; font-style: italic; }
+.my-result { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(0,255,135,0.04); border: 1px solid rgba(0,255,135,0.15); border-radius: 12px; }
+.my-rank-label { font-size: 13px; color: #888899; }
+.my-rank-num { font-family: 'Bebas Neue', sans-serif; font-size: 26px; flex: 1; letter-spacing: 0.04em; }
+.my-score { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: #00FF87; letter-spacing: 0.04em; }
+.rankings-list { display: flex; flex-direction: column; gap: 8px; }
+.rank-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; }
+.rank-row--me { border-color: rgba(0,255,135,0.25); background: rgba(0,255,135,0.03); }
+.rank-medal { font-size: 20px; flex-shrink: 0; min-width: 28px; }
+.rank-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.rank-name { font-size: 14px; font-weight: 600; }
+.rank-verdicts { font-size: 12px; color: #888899; line-height: 1.4; }
+.rank-scores { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.rank-total { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 0.04em; }
+.rank-breakdown { display: flex; gap: 8px; font-size: 11px; color: #888899; }
+.score-legend { display: flex; gap: 8px; justify-content: center; font-size: 12px; color: #555566; flex-wrap: wrap; }
+.results-actions { display: flex; flex-direction: column; gap: 10px; }
+.results-note { font-size: 13px; color: #555566; text-align: center; line-height: 1.5; }
+
+/* ================================================================
+   VERDICT COLOUR CHIPS (used in results)
+   ================================================================ */
+.verdict-chip--fair { display: inline-block; color: #00D4FF; font-weight: 700; font-size: 12px; }
+.verdict-chip--overpriced { display: inline-block; color: #FF4D6D; font-weight: 700; font-size: 12px; }
+.verdict-chip--steal { display: inline-block; color: #00FF87; font-weight: 700; font-size: 12px; }
+
+/* ================================================================
+   CHECK GAME STATUS
+   ================================================================ */
+.lookup-form { display: flex; flex-direction: column; gap: 10px; }
+.room-result { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.room-result-header { display: flex; align-items: center; justify-content: space-between; }
+.room-result-code { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 0.12em; }
+.room-result-status { font-size: 13px; font-weight: 600; }
+.room-result-players { display: flex; flex-wrap: wrap; gap: 6px; }
+.player-chip { font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,0.04); border-radius: 100px; color: #888899; border: 1px solid rgba(255,255,255,0.06); }
+.player-chip--me { background: rgba(0,255,135,0.08); color: #00FF87; font-weight: 600; border-color: rgba(0,255,135,0.2); }
+.mini-rankings { display: flex; flex-direction: column; gap: 6px; }
+.mini-rankings-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888899; }
+.mini-rank-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.mini-rank-name { flex: 1; }
+.mini-rank-score { font-weight: 600; color: #888899; }
+.rejoin-tip { font-size: 13px; color: #888899; background: rgba(255,255,255,0.03); padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); line-height: 1.5; }
+
+/* ================================================================
+   LEADERBOARD
+   ================================================================ */
+.tab-bar { display: flex; gap: 4px; background: rgba(255,255,255,0.04); padding: 4px; border-radius: 12px; }
+.tab-btn { flex: 1; padding: 8px; font-size: 14px; font-weight: 500; border-radius: 8px; color: #888899; transition: all 0.15s; cursor: pointer; background: none; border: none; font-family: 'Inter', sans-serif; }
+.tab-btn--active { background: #1A1A28; color: #F0F0F0; font-weight: 600; }
+.leaderboard-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; }
+.lb-row--me { border-color: rgba(0,255,135,0.25); background: rgba(0,255,135,0.03); }
+.lb-medal { font-size: 20px; min-width: 28px; }
+.lb-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.lb-name { font-size: 14px; font-weight: 600; }
+.lb-meta { font-size: 12px; color: #888899; }
+.lb-total { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.04em; color: #00FF87; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888899; }
+.stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #00FF87; letter-spacing: 0.04em; }
+.best-take-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.best-take-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888899; }
+.best-take-text { font-size: 15px; color: #F0F0F0; line-height: 1.6; font-style: italic; }
+.loading-state { display: flex; align-items: center; gap: 10px; color: #888899; font-size: 14px; padding: 20px 0; }
+.loading-state .spinner { border-color: rgba(255,255,255,0.1); border-top-color: #00FF87; }
+.empty-state { font-size: 15px; color: #888899; text-align: center; padding: 32px 0; }
+.my-stats { display: flex; flex-direction: column; gap: 12px; }
+
+/* ================================================================
+   AI DOTS
+   ================================================================ */
+.ai-dots { display: flex; justify-content: center; gap: 6px; }
+.ai-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #A78BFA; animation: dotBounce 1.2s infinite; }
+.ai-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ai-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotBounce { 0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; } 40% { transform: scale(1.2); opacity: 1; } }
+
+/* ================================================================
+   ANIMATIONS
+   ================================================================ */
+.fadeIn { animation: fadeIn 0.4s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.slide-up { animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (min-width: 600px) {
+  .app-container { padding: 0 2rem 6rem; }
+  .hero-section { padding: 6rem 2rem 4rem; }
+  .hero-title { font-size: clamp(5rem, 12vw, 9rem); }
+  .hero-subtitle { font-size: 1.2rem; }
+  .stat-chip { min-width: 100px; padding: 1rem 1.5rem; }
+  .stat-chip .num { font-size: 2rem; }
+  .screen-title { font-size: 2.5rem; }
+  .product-name { font-size: 2rem; }
+  .product-price { font-size: 5rem; }
+  .rank-total { font-size: 28px; }
+  .lb-total { font-size: 30px; }
+}
+
+@media (min-width: 900px) {
+  .app-container { max-width: 760px; }
+  .hero-inner { max-width: 760px; }
+  .landing-body-inner { max-width: 760px; }
+  .stat-chips { gap: 1rem; }
+  .verdict-grid { gap: 12px; }
+}
+
+@media (min-width: 1200px) {
+  .app-container { max-width: 860px; }
+  .hero-inner { max-width: 860px; }
+  .landing-body-inner { max-width: 860px; }
+}
