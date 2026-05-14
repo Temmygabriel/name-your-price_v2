@@ -1,8 +1,6 @@
 "use client";
-// Name Your Price — Voting Screen v1.0
+// Name Your Price — Voting Screen v1.1
 // Handles voting_1, voting_2, voting_3 statuses.
-// Knows which round it's in from room.status.
-// No HTP equivalent — new component.
 
 import { useState } from "react";
 import { Room, Verdict } from "../types";
@@ -10,7 +8,7 @@ import {
   getCurrentProduct,
   getCurrentSubmissions,
   getCurrentRound,
-} from "../app/page";
+} from "../app/App";
 
 interface VotingProps {
   room: Room;
@@ -48,7 +46,7 @@ export default function VotingScreen({
   const submittedCount = humanPlayers.filter((id) => currentSubs[id]).length;
   const waitingCount = humanPlayers.length - submittedCount;
 
-  // ── Submitted / waiting state ──────────────────────────────────────────────
+  // ── Submitted / waiting state ─────────────────────────────────────────────
   if (submitted) {
     const myVerdict = currentSubs[playerAddress]?.verdict;
 
@@ -58,7 +56,6 @@ export default function VotingScreen({
           <div className="submitted-icon">✓</div>
           <h2 className="screen-title">Verdict in!</h2>
 
-          {/* Show what they voted */}
           {myVerdict && (
             <div
               style={{
@@ -86,12 +83,10 @@ export default function VotingScreen({
             <>
               <div className="waiting-tip">
                 <span className="spinner" />
-                Waiting for {waitingCount} more player
-                {waitingCount > 1 ? "s" : ""}...
+                Waiting for {waitingCount} more player{waitingCount > 1 ? "s" : ""}...
               </div>
               <div className="timer-banner">
-                ⏱ After 60 seconds the game moves forward automatically — no
-                one can hold it up.
+                ⏱ After 60 seconds the game moves forward automatically.
               </div>
             </>
           ) : (
@@ -111,11 +106,10 @@ export default function VotingScreen({
     );
   }
 
-  // ── Main voting UI ─────────────────────────────────────────────────────────
+  // ── Main voting UI ────────────────────────────────────────────────────────
   return (
     <div className="screen fadeIn">
 
-      {/* Round header */}
       <div className="round-header">
         <span className="round-badge">Round {roundNum} of 3</span>
         <span className="round-meta">
@@ -124,26 +118,20 @@ export default function VotingScreen({
       </div>
 
       <h2 className="screen-title">Name Your Price</h2>
-      <p className="screen-sub">
-        Is this price FAIR, OVERPRICED, or a STEAL?
-      </p>
+      <p className="screen-sub">Is this price FAIR, OVERPRICED, or a STEAL?</p>
 
-      {/* Product card */}
       {product && (
         <div className="product-card">
           <div className="product-cat">{product.cat.toUpperCase()}</div>
           <div className="product-name">{product.name}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-            <div className="product-price">
-              ${product.price.toLocaleString()}
-            </div>
+            <div className="product-price">${product.price.toLocaleString()}</div>
             <div className="product-price-label">{product.currency}</div>
           </div>
           <div className="product-context">{product.context}</div>
         </div>
       )}
 
-      {/* Verdict buttons */}
       <div className="section-label">Your verdict</div>
       <div className="verdict-grid">
         {VERDICTS.map((v) => {
@@ -161,35 +149,26 @@ export default function VotingScreen({
                 </span>
                 <span className="verdict-desc">{v.desc}</span>
               </div>
-              {isSelected && (
-                <span className="verdict-selected-indicator">✓</span>
-              )}
+              {isSelected && <span className="verdict-selected-indicator">✓</span>}
             </button>
           );
         })}
       </div>
 
-      {/* Submit */}
       <button
         className="btn-primary"
         onClick={() => selected && onSubmitVerdict(roundNum, selected)}
         disabled={!selected || !!loading}
       >
         {loading ? (
-          <span className="btn-loading">
-            <span className="spinner" />
-            Submitting...
-          </span>
+          <span className="btn-loading"><span className="spinner" />Submitting...</span>
         ) : (
           `Lock In ${selected ?? "Verdict"} →`
         )}
       </button>
 
-      {!selected && (
-        <p className="hint-text">Tap a verdict to select it</p>
-      )}
+      {!selected && <p className="hint-text">Tap a verdict to select it</p>}
 
-      {/* Scoring reminder */}
       <div
         style={{
           background: "rgba(255,255,255,0.02)",

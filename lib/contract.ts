@@ -98,7 +98,6 @@ export async function readContract(
   method: string,
   args: unknown[]
 ): Promise<string> {
-  // Read calls don't need a persistent account
   const account = createAccount();
   const client = makeClient(account);
   const result = await client.readContract({
