@@ -1,6 +1,6 @@
-// app/page.tsx — SSR wrapper
-// Loads the real app client-side only so genlayer-js never runs on the server
-// and wallet extensions (MetaMask etc.) never conflict with it on load.
+"use client";
+// app/page.tsx
+// Must be a Client Component for dynamic({ ssr: false }) to work in Next.js 15 App Router.
 
 import dynamic from "next/dynamic";
 
