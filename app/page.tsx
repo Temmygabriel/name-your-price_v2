@@ -1,6 +1,8 @@
 "use client";
-// Name Your Price — Main Orchestrator v1.0
-// Mirrors HTP page.tsx exactly. Only status names, method names, and screen routing differ.
+// Name Your Price — Main Orchestrator v1.1
+// Fixes:
+//   1. Wallet extension conflict — defer account init, suppress hydration warning
+//   2. Solo round not advancing — reset advancingRef between rounds, always advance in solo
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Screen, Room, Verdict } from "../types";
@@ -58,9 +60,9 @@ export default function NameYourPrice() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  // FIX 1: track mount so we don't touch localStorage during SSR/hydration
+  const [mounted, setMounted] = useState(false);
 
-  // accountRef holds the SAME account object for the entire session.
-  // Private key is persisted to localStorage so it survives page refreshes.
   const accountRef = useRef<ReturnType<typeof makeAccount> | null>(null);
   const playerAddressRef = useRef<string>("");
   const screenRef = useRef<Screen>("landing");
@@ -70,8 +72,13 @@ export default function NameYourPrice() {
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const allSubmittedAtRef = useRef<number>(0);
   const allJudgingAtRef = useRef<number>(0);
+  // FIX 2: track which round status we last triggered advance for
+  const lastAdvancedStatusRef = useRef<string>("");
 
+  // FIX 1: defer ALL localStorage + account work until after mount
   useEffect(() => {
+    setMounted(true);
+
     const savedKey = localStorage.getItem("nyp_private_key");
     const savedName = localStorage.getItem("nyp_name");
 
@@ -114,15 +121,16 @@ export default function NameYourPrice() {
 
         const myAddr = playerAddressRef.current;
         const isHost = data.host === myAddr;
+        const isSolo = data.is_solo;
         const humanPlayers = Object.keys(data.players).filter((id) => !id.startsWith("bot_"));
 
-        // ── LOBBY ──────────────────────────────────────────────────────────
+        // ── LOBBY ────────────────────────────────────────────────────────────
         if (data.status === "lobby") {
           setScreen("lobby");
           return;
         }
 
-        // ── VOTING ROUNDS (voting_1 / voting_2 / voting_3) ─────────────────
+        // ── VOTING ROUNDS ────────────────────────────────────────────────────
         if (
           data.status === "voting_1" ||
           data.status === "voting_2" ||
@@ -130,18 +138,24 @@ export default function NameYourPrice() {
         ) {
           setScreen("voting");
 
-          // Determine current round's submissions
           const currentSubs = getCurrentSubmissions(data);
           const humanSubmitted = humanPlayers.filter((id) => currentSubs[id]).length;
           const allHumanSubmitted = humanSubmitted === humanPlayers.length;
 
-          // Update local submitted state based on whether MY address is in current subs
           setSubmitted(!!currentSubs[myAddr]);
+
+          // FIX 2: reset advancingRef when we move to a new round status
+          if (lastAdvancedStatusRef.current !== data.status) {
+            lastAdvancedStatusRef.current = data.status;
+            advancingRef.current = false;
+            allSubmittedAtRef.current = 0;
+          }
 
           if (allHumanSubmitted && !advancingRef.current) {
             if (allSubmittedAtRef.current === 0) allSubmittedAtRef.current = Date.now();
             const elapsed = Date.now() - allSubmittedAtRef.current;
-            if (isHost || elapsed > ADVANCE_FALLBACK) {
+            // FIX 2: in solo mode always advance immediately (no fallback wait needed)
+            if (isHost || isSolo || elapsed > ADVANCE_FALLBACK) {
               advancingRef.current = true;
               try {
                 await advanceRound(accountRef.current!, pollRoomCodeRef.current);
@@ -153,7 +167,7 @@ export default function NameYourPrice() {
           return;
         }
 
-        // ── JUDGING ────────────────────────────────────────────────────────
+        // ── JUDGING ──────────────────────────────────────────────────────────
         if (data.status === "judging") {
           allSubmittedAtRef.current = 0;
           setScreen("judging");
@@ -161,7 +175,8 @@ export default function NameYourPrice() {
           if (!calculatingRef.current) {
             if (allJudgingAtRef.current === 0) allJudgingAtRef.current = Date.now();
             const elapsed = Date.now() - allJudgingAtRef.current;
-            if (isHost || elapsed > CALC_FALLBACK) {
+            // FIX 2: solo — always calculate immediately
+            if (isHost || isSolo || elapsed > CALC_FALLBACK) {
               calculatingRef.current = true;
               try {
                 await writeContract(accountRef.current!, "calculate_results", [pollRoomCodeRef.current]);
@@ -173,7 +188,7 @@ export default function NameYourPrice() {
           return;
         }
 
-        // ── COMPLETED ──────────────────────────────────────────────────────
+        // ── COMPLETED ────────────────────────────────────────────────────────
         if (data.status === "completed") {
           allJudgingAtRef.current = 0;
           stopPolling();
@@ -211,9 +226,10 @@ export default function NameYourPrice() {
     calculatingRef.current = false;
     allSubmittedAtRef.current = 0;
     allJudgingAtRef.current = 0;
+    lastAdvancedStatusRef.current = "";
   }
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   async function handleCreateRoom(name: string) {
     if (!name.trim()) return;
@@ -267,7 +283,6 @@ export default function NameYourPrice() {
       const code = await writeContractWithReturn(acc, "create_solo_room", [acc.address, playerN]);
       setRoomCode(code);
       resetRoomState();
-      // Solo starts directly in voting_1 — go straight to voting screen
       setScreen("voting");
       startPolling(code);
     } catch {
@@ -322,7 +337,6 @@ export default function NameYourPrice() {
     setRoomCode(code);
     resetRoomState();
 
-    // Restore submitted state for whichever round we're in
     const myAddr = playerAddressRef.current;
     const subs = getCurrentSubmissions(rejoinedRoom);
     setSubmitted(!!subs[myAddr]);
@@ -355,10 +369,14 @@ export default function NameYourPrice() {
     setScreen("landing");
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   const playerAddress = playerAddressRef.current;
   const isHost = room ? room.host === playerAddress : false;
+
+  // FIX 1: don't render anything until client has mounted —
+  // prevents wallet extension hydration mismatch crash
+  if (!mounted) return null;
 
   const renderScreen = () => {
     switch (screen) {
@@ -375,7 +393,6 @@ export default function NameYourPrice() {
             error={error}
           />
         );
-
       case "lobby":
         if (!room) return null;
         return (
@@ -388,7 +405,6 @@ export default function NameYourPrice() {
             loading={loading}
           />
         );
-
       case "voting":
         if (!room) return null;
         return (
@@ -400,10 +416,8 @@ export default function NameYourPrice() {
             submitted={submitted}
           />
         );
-
       case "judging":
         return <JudgingScreen />;
-
       case "results":
         if (!room) return null;
         return (
@@ -414,7 +428,6 @@ export default function NameYourPrice() {
             onHome={handlePlayAgain}
           />
         );
-
       case "rejoin":
         return (
           <RejoinScreen
@@ -423,7 +436,6 @@ export default function NameYourPrice() {
             onBack={() => setScreen("landing")}
           />
         );
-
       case "leaderboard":
         return (
           <LeaderboardScreen
@@ -431,7 +443,6 @@ export default function NameYourPrice() {
             onBack={() => setScreen("landing")}
           />
         );
-
       default:
         return null;
     }
