@@ -1,5 +1,7 @@
 // Name Your Price — GenLayer Contract Utils
-// v1.0 — Mirrors HTP contract.ts exactly, adds submitVerdict + advanceRound
+// v1.1 — BUG FIX: submitVerdict now sends roundNum as String(roundNum)
+// Contract's submit_verdict param is typed str, not int.
+// Sending integer caused status_map.get() to return None silently — verdict never stored.
 
 import { createClient, createAccount } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
@@ -8,12 +10,10 @@ import { TransactionStatus } from "genlayer-js/types";
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 const MAX_ATTEMPTS = 3;
 
-// Pass account in — never generate a random one for write calls
 function makeClient(account: ReturnType<typeof createAccount>) {
   return createClient({ chain: studionet, account });
 }
 
-// Accept optional private key so the same account can be restored from localStorage
 export function makeAccount(privateKey?: `0x${string}`) {
   return createAccount(privateKey);
 }
@@ -123,8 +123,6 @@ export async function getGlobalLeaderboard() {
   return JSON.parse(raw);
 }
 
-// ── NYP-specific additions ─────────────────────────────────────────────────
-
 export async function submitVerdict(
   account: ReturnType<typeof createAccount>,
   roomCode: string,
@@ -132,7 +130,13 @@ export async function submitVerdict(
   roundNum: number,
   verdict: string
 ): Promise<void> {
-  return writeContract(account, "submit_verdict", [roomCode, playerAddress, roundNum, verdict]);
+  // FIX: String(roundNum) — contract expects "1"/"2"/"3" not 1/2/3
+  return writeContract(account, "submit_verdict", [
+    roomCode,
+    playerAddress,
+    String(roundNum),
+    verdict,
+  ]);
 }
 
 export async function advanceRound(

@@ -1,8 +1,9 @@
 "use client";
-// Name Your Price — Main Orchestrator v1.2
-// Lives in App.tsx, loaded via dynamic({ ssr: false }) from page.tsx.
-// This means genlayer-js never executes server-side or during initial hydration,
-// eliminating the wallet extension (MetaMask/Phantom) infinite-loop crash.
+// Name Your Price — Main Orchestrator v1.3
+// FIX: useEffect wraps makeAccount in try/catch.
+// If nyp_private_key in localStorage is corrupted (e.g. the string "undefined"),
+// makeAccount throws "invalid private key". We catch it, clear the bad key,
+// and generate a fresh account. This fixes the infinite loop crash on normal browsers.
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Screen, Room, Verdict } from "../types";
@@ -73,13 +74,33 @@ export default function App() {
   const lastAdvancedStatusRef = useRef<string>("");
 
   useEffect(() => {
-    const savedKey = localStorage.getItem("nyp_private_key");
     const savedName = localStorage.getItem("nyp_name");
 
+    // FIX: Wrap makeAccount in try/catch.
+    // If nyp_private_key stored value is corrupted (e.g. the string "undefined"
+    // from a previous broken session), makeAccount throws "invalid private key".
+    // We catch it, wipe all nyp_ keys, and generate a fresh account.
     let acc: ReturnType<typeof makeAccount>;
-    if (savedKey) {
-      acc = makeAccount(savedKey as `0x${string}`);
-    } else {
+    const savedKey = localStorage.getItem("nyp_private_key");
+
+    try {
+      if (savedKey && savedKey !== "undefined" && savedKey !== "null" && savedKey.startsWith("0x")) {
+        acc = makeAccount(savedKey as `0x${string}`);
+      } else {
+        // No valid key — generate fresh
+        if (savedKey !== null) {
+          // Had a bad key — clear all stale nyp_ data
+          localStorage.removeItem("nyp_private_key");
+          localStorage.removeItem("nyp_address");
+        }
+        acc = makeAccount();
+        localStorage.setItem("nyp_private_key", acc.privateKey);
+      }
+    } catch {
+      // makeAccount threw on the saved key — clear everything and start fresh
+      localStorage.removeItem("nyp_private_key");
+      localStorage.removeItem("nyp_address");
+      localStorage.removeItem("nyp_name");
       acc = makeAccount();
       localStorage.setItem("nyp_private_key", acc.privateKey);
     }
@@ -118,13 +139,13 @@ export default function App() {
         const isSolo = data.is_solo;
         const humanPlayers = Object.keys(data.players).filter((id) => !id.startsWith("bot_"));
 
-        // ── LOBBY ────────────────────────────────────────────────────────────
+        // ── LOBBY ──────────────────────────────────────────────────────────
         if (data.status === "lobby") {
           setScreen("lobby");
           return;
         }
 
-        // ── VOTING ROUNDS ────────────────────────────────────────────────────
+        // ── VOTING ROUNDS ──────────────────────────────────────────────────
         if (
           data.status === "voting_1" ||
           data.status === "voting_2" ||
@@ -148,7 +169,6 @@ export default function App() {
           if (allHumanSubmitted && !advancingRef.current) {
             if (allSubmittedAtRef.current === 0) allSubmittedAtRef.current = Date.now();
             const elapsed = Date.now() - allSubmittedAtRef.current;
-            // Solo: advance immediately. Multiplayer: host advances, others fall back.
             if (isHost || isSolo || elapsed > ADVANCE_FALLBACK) {
               advancingRef.current = true;
               try {
@@ -161,7 +181,7 @@ export default function App() {
           return;
         }
 
-        // ── JUDGING ──────────────────────────────────────────────────────────
+        // ── JUDGING ────────────────────────────────────────────────────────
         if (data.status === "judging") {
           allSubmittedAtRef.current = 0;
           setScreen("judging");
@@ -181,7 +201,7 @@ export default function App() {
           return;
         }
 
-        // ── COMPLETED ────────────────────────────────────────────────────────
+        // ── COMPLETED ──────────────────────────────────────────────────────
         if (data.status === "completed") {
           allJudgingAtRef.current = 0;
           stopPolling();
@@ -201,9 +221,15 @@ export default function App() {
   function getAccount() {
     if (!accountRef.current) {
       const savedKey = localStorage.getItem("nyp_private_key");
-      if (savedKey) {
-        accountRef.current = makeAccount(savedKey as `0x${string}`);
-      } else {
+      try {
+        if (savedKey && savedKey !== "undefined" && savedKey !== "null" && savedKey.startsWith("0x")) {
+          accountRef.current = makeAccount(savedKey as `0x${string}`);
+        } else {
+          accountRef.current = makeAccount();
+          localStorage.setItem("nyp_private_key", accountRef.current.privateKey);
+        }
+      } catch {
+        localStorage.removeItem("nyp_private_key");
         accountRef.current = makeAccount();
         localStorage.setItem("nyp_private_key", accountRef.current.privateKey);
       }
@@ -222,7 +248,7 @@ export default function App() {
     lastAdvancedStatusRef.current = "";
   }
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   async function handleCreateRoom(name: string) {
     if (!name.trim()) return;
