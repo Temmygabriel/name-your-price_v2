@@ -1,8 +1,7 @@
 "use client";
-// Name Your Price — Main Orchestrator v1.2
-// Lives in App.tsx, loaded via dynamic({ ssr: false }) from page.tsx.
-// This means genlayer-js never executes server-side or during initial hydration,
-// eliminating the wallet extension (MetaMask/Phantom) infinite-loop crash.
+// Name Your Price — Main Orchestrator v1.3
+// Fix: in solo mode, call advanceRound directly after submit_verdict succeeds.
+// Don't rely on the poll mutex to trigger it — the mutex was getting stuck.
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Screen, Room, Verdict } from "../types";
@@ -27,7 +26,7 @@ const POLL_INTERVAL = 3000;
 const ADVANCE_FALLBACK = 60_000;
 const CALC_FALLBACK = 30_000;
 
-// ── Round helpers (exported so child screens can use them) ──────────────────
+// ── Round helpers ───────────────────────────────────────────────────────────
 
 export function getCurrentSubmissions(room: Room) {
   if (room.status === "voting_1") return room.submissions_1;
@@ -71,6 +70,10 @@ export default function App() {
   const allSubmittedAtRef = useRef<number>(0);
   const allJudgingAtRef = useRef<number>(0);
   const lastAdvancedStatusRef = useRef<string>("");
+  // Track whether this is a solo game so handlers know without room state
+  const isSoloRef = useRef(false);
+  // Track current room status so handleSubmitVerdict knows which round to advance from
+  const roomStatusRef = useRef<string>("");
 
   useEffect(() => {
     const savedKey = localStorage.getItem("nyp_private_key");
@@ -113,18 +116,22 @@ export default function App() {
         if (!data || !data.code) return;
         setRoom(data);
 
+        // Keep refs in sync for handlers
+        isSoloRef.current = data.is_solo;
+        roomStatusRef.current = data.status;
+
         const myAddr = playerAddressRef.current;
         const isHost = data.host === myAddr;
         const isSolo = data.is_solo;
         const humanPlayers = Object.keys(data.players).filter((id) => !id.startsWith("bot_"));
 
-        // ── LOBBY ────────────────────────────────────────────────────────────
+        // ── LOBBY ──────────────────────────────────────────────────────────
         if (data.status === "lobby") {
           setScreen("lobby");
           return;
         }
 
-        // ── VOTING ROUNDS ────────────────────────────────────────────────────
+        // ── VOTING ROUNDS ──────────────────────────────────────────────────
         if (
           data.status === "voting_1" ||
           data.status === "voting_2" ||
@@ -145,11 +152,12 @@ export default function App() {
             allSubmittedAtRef.current = 0;
           }
 
-          if (allHumanSubmitted && !advancingRef.current) {
+          // Solo: advanceRound is called directly from handleSubmitVerdict.
+          // Multiplayer: poll handles it with host-first + fallback logic.
+          if (!isSolo && allHumanSubmitted && !advancingRef.current) {
             if (allSubmittedAtRef.current === 0) allSubmittedAtRef.current = Date.now();
             const elapsed = Date.now() - allSubmittedAtRef.current;
-            // Solo: advance immediately. Multiplayer: host advances, others fall back.
-            if (isHost || isSolo || elapsed > ADVANCE_FALLBACK) {
+            if (isHost || elapsed > ADVANCE_FALLBACK) {
               advancingRef.current = true;
               try {
                 await advanceRound(accountRef.current!, pollRoomCodeRef.current);
@@ -161,7 +169,7 @@ export default function App() {
           return;
         }
 
-        // ── JUDGING ──────────────────────────────────────────────────────────
+        // ── JUDGING ────────────────────────────────────────────────────────
         if (data.status === "judging") {
           allSubmittedAtRef.current = 0;
           setScreen("judging");
@@ -181,7 +189,7 @@ export default function App() {
           return;
         }
 
-        // ── COMPLETED ────────────────────────────────────────────────────────
+        // ── COMPLETED ──────────────────────────────────────────────────────
         if (data.status === "completed") {
           allJudgingAtRef.current = 0;
           stopPolling();
@@ -220,9 +228,11 @@ export default function App() {
     allSubmittedAtRef.current = 0;
     allJudgingAtRef.current = 0;
     lastAdvancedStatusRef.current = "";
+    isSoloRef.current = false;
+    roomStatusRef.current = "";
   }
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   async function handleCreateRoom(name: string) {
     if (!name.trim()) return;
@@ -276,6 +286,7 @@ export default function App() {
       const code = await writeContractWithReturn(acc, "create_solo_room", [acc.address, playerN]);
       setRoomCode(code);
       resetRoomState();
+      isSoloRef.current = true;
       setScreen("voting");
       startPolling(code);
     } catch {
@@ -291,11 +302,8 @@ export default function App() {
     const acc = getAccount();
     try {
       await writeContract(acc, "toggle_ready", [roomCode, acc.address]);
-    } catch {
-      /* silent */
-    } finally {
-      setLoading("");
-    }
+    } catch { /* silent */ }
+    finally { setLoading(""); }
   }
 
   async function handleStartGame() {
@@ -318,6 +326,18 @@ export default function App() {
     try {
       await submitVerdict(acc, roomCode, acc.address, roundNum, verdict);
       setSubmitted(true);
+
+      // ── KEY FIX ──────────────────────────────────────────────────────────
+      // In solo mode: call advanceRound immediately after verdict succeeds.
+      // The poll-based mutex was getting stuck — this bypasses it entirely.
+      if (isSoloRef.current) {
+        try {
+          await advanceRound(acc, roomCode);
+        } catch (e) {
+          // advanceRound failing is non-fatal — poll will catch up
+          console.warn("advanceRound after solo submit failed:", e);
+        }
+      }
     } catch {
       setError("Could not submit verdict.");
     } finally {
@@ -329,6 +349,9 @@ export default function App() {
     setRoom(rejoinedRoom);
     setRoomCode(code);
     resetRoomState();
+
+    isSoloRef.current = rejoinedRoom.is_solo;
+    roomStatusRef.current = rejoinedRoom.status;
 
     const myAddr = playerAddressRef.current;
     const subs = getCurrentSubmissions(rejoinedRoom);
@@ -362,7 +385,7 @@ export default function App() {
     setScreen("landing");
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   const playerAddress = playerAddressRef.current;
   const isHost = room ? room.host === playerAddress : false;
