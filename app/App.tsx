@@ -1,9 +1,8 @@
 "use client";
-// Name Your Price — Main Orchestrator v1.3
-// FIX: useEffect wraps makeAccount in try/catch.
-// If nyp_private_key in localStorage is corrupted (e.g. the string "undefined"),
-// makeAccount throws "invalid private key". We catch it, clear the bad key,
-// and generate a fresh account. This fixes the infinite loop crash on normal browsers.
+// Name Your Price — Main Orchestrator v1.4
+// WORKING BASELINE COMMIT — app fully functional as of this version.
+// Solo mode and multiplayer both work end to end.
+// Changes from v1.3: pass roomCode prop to JudgingScreen.
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Screen, Room, Verdict } from "../types";
@@ -28,8 +27,6 @@ const POLL_INTERVAL = 3000;
 const ADVANCE_FALLBACK = 60_000;
 const CALC_FALLBACK = 30_000;
 
-// ── Round helpers (exported so child screens can use them) ──────────────────
-
 export function getCurrentSubmissions(room: Room) {
   if (room.status === "voting_1") return room.submissions_1;
   if (room.status === "voting_2") return room.submissions_2;
@@ -50,8 +47,6 @@ export function getCurrentRound(room: Room): number {
   if (room.status === "voting_3") return 3;
   return 1;
 }
-
-// ── Component ───────────────────────────────────────────────────────────────
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("landing");
@@ -75,11 +70,6 @@ export default function App() {
 
   useEffect(() => {
     const savedName = localStorage.getItem("nyp_name");
-
-    // FIX: Wrap makeAccount in try/catch.
-    // If nyp_private_key stored value is corrupted (e.g. the string "undefined"
-    // from a previous broken session), makeAccount throws "invalid private key".
-    // We catch it, wipe all nyp_ keys, and generate a fresh account.
     let acc: ReturnType<typeof makeAccount>;
     const savedKey = localStorage.getItem("nyp_private_key");
 
@@ -87,9 +77,7 @@ export default function App() {
       if (savedKey && savedKey !== "undefined" && savedKey !== "null" && savedKey.startsWith("0x")) {
         acc = makeAccount(savedKey as `0x${string}`);
       } else {
-        // No valid key — generate fresh
         if (savedKey !== null) {
-          // Had a bad key — clear all stale nyp_ data
           localStorage.removeItem("nyp_private_key");
           localStorage.removeItem("nyp_address");
         }
@@ -97,7 +85,6 @@ export default function App() {
         localStorage.setItem("nyp_private_key", acc.privateKey);
       }
     } catch {
-      // makeAccount threw on the saved key — clear everything and start fresh
       localStorage.removeItem("nyp_private_key");
       localStorage.removeItem("nyp_address");
       localStorage.removeItem("nyp_name");
@@ -108,7 +95,6 @@ export default function App() {
     accountRef.current = acc;
     playerAddressRef.current = acc.address;
     localStorage.setItem("nyp_address", acc.address);
-
     if (savedName) setPlayerName(savedName);
   }, []);
 
@@ -139,27 +125,16 @@ export default function App() {
         const isSolo = data.is_solo;
         const humanPlayers = Object.keys(data.players).filter((id) => !id.startsWith("bot_"));
 
-        // ── LOBBY ──────────────────────────────────────────────────────────
-        if (data.status === "lobby") {
-          setScreen("lobby");
-          return;
-        }
+        if (data.status === "lobby") { setScreen("lobby"); return; }
 
-        // ── VOTING ROUNDS ──────────────────────────────────────────────────
-        if (
-          data.status === "voting_1" ||
-          data.status === "voting_2" ||
-          data.status === "voting_3"
-        ) {
+        if (data.status === "voting_1" || data.status === "voting_2" || data.status === "voting_3") {
           setScreen("voting");
-
           const currentSubs = getCurrentSubmissions(data);
           const humanSubmitted = humanPlayers.filter((id) => currentSubs[id]).length;
           const allHumanSubmitted = humanSubmitted === humanPlayers.length;
 
           setSubmitted(!!currentSubs[myAddr]);
 
-          // Reset advance refs when round changes
           if (lastAdvancedStatusRef.current !== data.status) {
             lastAdvancedStatusRef.current = data.status;
             advancingRef.current = false;
@@ -171,45 +146,34 @@ export default function App() {
             const elapsed = Date.now() - allSubmittedAtRef.current;
             if (isHost || isSolo || elapsed > ADVANCE_FALLBACK) {
               advancingRef.current = true;
-              try {
-                await advanceRound(accountRef.current!, pollRoomCodeRef.current);
-              } catch {
-                advancingRef.current = false;
-              }
+              try { await advanceRound(accountRef.current!, pollRoomCodeRef.current); }
+              catch { advancingRef.current = false; }
             }
           }
           return;
         }
 
-        // ── JUDGING ────────────────────────────────────────────────────────
         if (data.status === "judging") {
           allSubmittedAtRef.current = 0;
           setScreen("judging");
-
           if (!calculatingRef.current) {
             if (allJudgingAtRef.current === 0) allJudgingAtRef.current = Date.now();
             const elapsed = Date.now() - allJudgingAtRef.current;
             if (isHost || isSolo || elapsed > CALC_FALLBACK) {
               calculatingRef.current = true;
-              try {
-                await writeContract(accountRef.current!, "calculate_results", [pollRoomCodeRef.current]);
-              } catch {
-                calculatingRef.current = false;
-              }
+              try { await writeContract(accountRef.current!, "calculate_results", [pollRoomCodeRef.current]); }
+              catch { calculatingRef.current = false; }
             }
           }
           return;
         }
 
-        // ── COMPLETED ──────────────────────────────────────────────────────
         if (data.status === "completed") {
           allJudgingAtRef.current = 0;
           stopPolling();
           setScreen("results");
         }
-      } catch {
-        /* Network blip — keep polling */
-      }
+      } catch { /* Network blip */ }
     };
 
     poll();
@@ -248,93 +212,58 @@ export default function App() {
     lastAdvancedStatusRef.current = "";
   }
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
   async function handleCreateRoom(name: string) {
     if (!name.trim()) return;
-    setLoading("Creating room...");
-    setError("");
+    setLoading("Creating room..."); setError("");
     const acc = getAccount();
-    localStorage.setItem("nyp_name", name);
-    setPlayerName(name);
+    localStorage.setItem("nyp_name", name); setPlayerName(name);
     try {
       const code = await writeContractWithReturn(acc, "create_room", [acc.address, name]);
-      setRoomCode(code);
-      resetRoomState();
-      setScreen("lobby");
-      startPolling(code);
-    } catch (e: any) {
-      console.error("handleCreateRoom failed:", e?.message, e);
-      setError("Failed to create room. Try again.");
-    } finally {
-      setLoading("");
-    }
+      setRoomCode(code); resetRoomState(); setScreen("lobby"); startPolling(code);
+    } catch (e: any) { console.error(e); setError("Failed to create room. Try again."); }
+    finally { setLoading(""); }
   }
 
   async function handleJoinRoom(code: string, name: string) {
     if (!code.trim() || !name.trim()) return;
-    setLoading("Joining room...");
-    setError("");
+    setLoading("Joining room..."); setError("");
     const acc = getAccount();
-    localStorage.setItem("nyp_name", name);
-    setPlayerName(name);
+    localStorage.setItem("nyp_name", name); setPlayerName(name);
     try {
       await writeContract(acc, "join_room", [code.toUpperCase(), acc.address, name]);
-      setRoomCode(code.toUpperCase());
-      resetRoomState();
-      setScreen("lobby");
-      startPolling(code.toUpperCase());
-    } catch {
-      setError("Could not join room. Check the code.");
-    } finally {
-      setLoading("");
-    }
+      setRoomCode(code.toUpperCase()); resetRoomState(); setScreen("lobby"); startPolling(code.toUpperCase());
+    } catch { setError("Could not join room. Check the code."); }
+    finally { setLoading(""); }
   }
 
   async function handleSoloArena(name: string) {
     const playerN = name || playerName || "Player";
-    setLoading("Setting up Solo Arena...");
-    setError("");
+    setLoading("Setting up Solo Arena..."); setError("");
     const acc = getAccount();
-    localStorage.setItem("nyp_name", playerN);
-    setPlayerName(playerN);
+    localStorage.setItem("nyp_name", playerN); setPlayerName(playerN);
     try {
       const code = await writeContractWithReturn(acc, "create_solo_room", [acc.address, playerN]);
-      setRoomCode(code);
-      resetRoomState();
-      setScreen("voting");
-      startPolling(code);
-    } catch {
-      setError("Failed to start Solo Arena. Try again.");
-    } finally {
-      setLoading("");
-    }
+      setRoomCode(code); resetRoomState(); setScreen("voting"); startPolling(code);
+    } catch { setError("Failed to start Solo Arena. Try again."); }
+    finally { setLoading(""); }
   }
 
   async function handleToggleReady() {
     if (!roomCode) return;
     setLoading("Updating...");
     const acc = getAccount();
-    try {
-      await writeContract(acc, "toggle_ready", [roomCode, acc.address]);
-    } catch {
-      /* silent */
-    } finally {
-      setLoading("");
-    }
+    try { await writeContract(acc, "toggle_ready", [roomCode, acc.address]); }
+    catch { /* silent */ }
+    finally { setLoading(""); }
   }
 
   async function handleStartGame() {
     if (!roomCode) return;
     setLoading("Starting game...");
     const acc = getAccount();
-    try {
-      await writeContract(acc, "start_game", [roomCode, acc.address]);
-    } catch {
-      setError("Could not start game.");
-    } finally {
-      setLoading("");
-    }
+    try { await writeContract(acc, "start_game", [roomCode, acc.address]); }
+    catch { setError("Could not start game."); }
+    finally { setLoading(""); }
   }
 
   async function handleSubmitVerdict(roundNum: number, verdict: Verdict) {
@@ -344,51 +273,24 @@ export default function App() {
     try {
       await submitVerdict(acc, roomCode, acc.address, roundNum, verdict);
       setSubmitted(true);
-    } catch {
-      setError("Could not submit verdict.");
-    } finally {
-      setLoading("");
-    }
+    } catch { setError("Could not submit verdict."); }
+    finally { setLoading(""); }
   }
 
   function handleRejoin(rejoinedRoom: Room, code: string) {
-    setRoom(rejoinedRoom);
-    setRoomCode(code);
-    resetRoomState();
-
+    setRoom(rejoinedRoom); setRoomCode(code); resetRoomState();
     const myAddr = playerAddressRef.current;
     const subs = getCurrentSubmissions(rejoinedRoom);
     setSubmitted(!!subs[myAddr]);
-
-    if (rejoinedRoom.status === "completed") {
-      stopPolling();
-      setScreen("results");
-    } else if (
-      rejoinedRoom.status === "voting_1" ||
-      rejoinedRoom.status === "voting_2" ||
-      rejoinedRoom.status === "voting_3"
-    ) {
-      setScreen("voting");
-      startPolling(code);
-    } else if (rejoinedRoom.status === "judging") {
-      setScreen("judging");
-      startPolling(code);
-    } else {
-      setScreen("lobby");
-      startPolling(code);
-    }
+    if (rejoinedRoom.status === "completed") { stopPolling(); setScreen("results"); }
+    else if (rejoinedRoom.status === "voting_1" || rejoinedRoom.status === "voting_2" || rejoinedRoom.status === "voting_3") { setScreen("voting"); startPolling(code); }
+    else if (rejoinedRoom.status === "judging") { setScreen("judging"); startPolling(code); }
+    else { setScreen("lobby"); startPolling(code); }
   }
 
   function handlePlayAgain() {
-    stopPolling();
-    setRoom(null);
-    setRoomCode("");
-    setError("");
-    resetRoomState();
-    setScreen("landing");
+    stopPolling(); setRoom(null); setRoomCode(""); setError(""); resetRoomState(); setScreen("landing");
   }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   const playerAddress = playerAddressRef.current;
   const isHost = room ? room.host === playerAddress : false;
@@ -410,54 +312,20 @@ export default function App() {
         );
       case "lobby":
         if (!room) return null;
-        return (
-          <LobbyScreen
-            room={room}
-            playerAddress={playerAddress}
-            isHost={isHost}
-            onToggleReady={handleToggleReady}
-            onStartGame={handleStartGame}
-            loading={loading}
-          />
-        );
+        return <LobbyScreen room={room} playerAddress={playerAddress} isHost={isHost} onToggleReady={handleToggleReady} onStartGame={handleStartGame} loading={loading} />;
       case "voting":
         if (!room) return null;
-        return (
-          <VotingScreen
-            room={room}
-            playerAddress={playerAddress}
-            onSubmitVerdict={handleSubmitVerdict}
-            loading={loading}
-            submitted={submitted}
-          />
-        );
+        return <VotingScreen room={room} playerAddress={playerAddress} onSubmitVerdict={handleSubmitVerdict} loading={loading} submitted={submitted} />;
       case "judging":
-        return <JudgingScreen />;
+        // Pass roomCode so JudgingScreen can display it and tell players to use Check Game
+        return <JudgingScreen roomCode={roomCode} />;
       case "results":
         if (!room) return null;
-        return (
-          <ResultsScreen
-            room={room}
-            playerAddress={playerAddress}
-            onPlayAgain={handlePlayAgain}
-            onHome={handlePlayAgain}
-          />
-        );
+        return <ResultsScreen room={room} playerAddress={playerAddress} onPlayAgain={handlePlayAgain} onHome={handlePlayAgain} />;
       case "rejoin":
-        return (
-          <RejoinScreen
-            playerAddress={playerAddress}
-            onRejoin={handleRejoin}
-            onBack={() => setScreen("landing")}
-          />
-        );
+        return <RejoinScreen playerAddress={playerAddress} onRejoin={handleRejoin} onBack={() => setScreen("landing")} />;
       case "leaderboard":
-        return (
-          <LeaderboardScreen
-            playerAddress={playerAddress}
-            onBack={() => setScreen("landing")}
-          />
-        );
+        return <LeaderboardScreen playerAddress={playerAddress} onBack={() => setScreen("landing")} />;
       default:
         return null;
     }

@@ -1,7 +1,5 @@
 // Name Your Price — GenLayer Contract Utils
-// v1.1 — BUG FIX: submitVerdict now sends roundNum as String(roundNum)
-// Contract's submit_verdict param is typed str, not int.
-// Sending integer caused status_map.get() to return None silently — verdict never stored.
+// v1.1 — FIX: submitVerdict sends String(roundNum), not number
 
 import { createClient, createAccount } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
@@ -94,17 +92,10 @@ export async function writeContractWithReturn(
   throw new Error("All attempts failed");
 }
 
-export async function readContract(
-  method: string,
-  args: unknown[]
-): Promise<string> {
+export async function readContract(method: string, args: unknown[]): Promise<string> {
   const account = createAccount();
   const client = makeClient(account);
-  const result = await client.readContract({
-    address: CONTRACT_ADDRESS,
-    functionName: method,
-    args,
-  });
+  const result = await client.readContract({ address: CONTRACT_ADDRESS, functionName: method, args });
   return result as string;
 }
 
@@ -130,11 +121,10 @@ export async function submitVerdict(
   roundNum: number,
   verdict: string
 ): Promise<void> {
-  // FIX: String(roundNum) — contract expects "1"/"2"/"3" not 1/2/3
   return writeContract(account, "submit_verdict", [
     roomCode,
     playerAddress,
-    String(roundNum),
+    String(roundNum), // FIX: contract expects "1"/"2"/"3" not 1/2/3
     verdict,
   ]);
 }
