@@ -1,4 +1,4 @@
-# v0.2.16
+# v0.3.0 — Real web price verification via gl.nondet.get_webpage
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 import genlayer.gl as gl
@@ -6,62 +6,165 @@ from genlayer import TreeMap, u256
 import json
 
 
+# PRODUCTS: catalogue of products with real verification URLs.
+# prices here are reference anchors only — the contract fetches live data
+# from the web at judge time and uses that to determine the correct verdict.
 PRODUCTS = [
     # TECH
-    {"id": 0,  "cat": "tech", "name": "AirPods Pro (2nd Gen)", "price": 249, "currency": "USD", "context": "Apple wireless earbuds with ANC, sold at Apple stores worldwide."},
-    {"id": 1,  "cat": "tech", "name": "Netflix Standard Plan (monthly)", "price": 15, "currency": "USD", "context": "Netflix mid-tier streaming subscription with HD quality, one account."},
-    {"id": 2,  "cat": "tech", "name": "iPhone 15 (128GB)", "price": 799, "currency": "USD", "context": "Apple base model iPhone, newest generation, unlocked from Apple Store."},
-    {"id": 3,  "cat": "tech", "name": "Spotify Premium (monthly)", "price": 11, "currency": "USD", "context": "Spotify individual ad-free music streaming subscription."},
-    {"id": 4,  "cat": "tech", "name": "Samsung 65-inch 4K TV", "price": 1100, "currency": "USD", "context": "Samsung mid-range 65-inch QLED 4K smart TV, sold at major retailers."},
-    {"id": 5,  "cat": "tech", "name": "ChatGPT Plus (monthly)", "price": 20, "currency": "USD", "context": "OpenAI premium ChatGPT subscription with GPT-4 access."},
-    {"id": 6,  "cat": "tech", "name": "iPad (10th Gen, 64GB)", "price": 449, "currency": "USD", "context": "Apple base iPad, newest generation, WiFi only, from Apple Store."},
-    {"id": 7,  "cat": "tech", "name": "USB-C Cable (Apple, 1m)", "price": 29, "currency": "USD", "context": "Apple official 1-metre USB-C cable sold in Apple retail stores."},
-    {"id": 8,  "cat": "tech", "name": "PlayStation 5 (Disc Edition)", "price": 499, "currency": "USD", "context": "Sony current-gen gaming console, standard disc version, new."},
-    {"id": 9,  "cat": "tech", "name": "Amazon Echo Dot (5th Gen)", "price": 50, "currency": "USD", "context": "Amazon compact smart speaker with Alexa, latest generation."},
+    {"id": 0,  "cat": "tech", "name": "AirPods Pro (2nd Gen)", "price": 249, "currency": "USD",
+     "context": "Apple wireless earbuds with ANC, sold at Apple stores worldwide.",
+     "verify_url": "https://www.apple.com/shop/buy-airpods/airpods-pro"},
+    {"id": 1,  "cat": "tech", "name": "Netflix Standard Plan (monthly)", "price": 15, "currency": "USD",
+     "context": "Netflix mid-tier streaming subscription with HD quality, one account.",
+     "verify_url": "https://help.netflix.com/en/node/24926"},
+    {"id": 2,  "cat": "tech", "name": "iPhone 15 (128GB)", "price": 799, "currency": "USD",
+     "context": "Apple base model iPhone, newest generation, unlocked from Apple Store.",
+     "verify_url": "https://www.apple.com/shop/buy-iphone/iphone-15"},
+    {"id": 3,  "cat": "tech", "name": "Spotify Premium (monthly)", "price": 11, "currency": "USD",
+     "context": "Spotify individual ad-free music streaming subscription.",
+     "verify_url": "https://www.spotify.com/us/premium/"},
+    {"id": 4,  "cat": "tech", "name": "Samsung 65-inch 4K TV", "price": 1100, "currency": "USD",
+     "context": "Samsung mid-range 65-inch QLED 4K smart TV, sold at major retailers.",
+     "verify_url": "https://www.samsung.com/us/televisions-home-theater/tvs/qled-tvs/"},
+    {"id": 5,  "cat": "tech", "name": "ChatGPT Plus (monthly)", "price": 20, "currency": "USD",
+     "context": "OpenAI premium ChatGPT subscription with GPT-4 access.",
+     "verify_url": "https://openai.com/chatgpt/pricing/"},
+    {"id": 6,  "cat": "tech", "name": "iPad (10th Gen, 64GB)", "price": 449, "currency": "USD",
+     "context": "Apple base iPad, newest generation, WiFi only, from Apple Store.",
+     "verify_url": "https://www.apple.com/shop/buy-ipad/ipad"},
+    {"id": 7,  "cat": "tech", "name": "USB-C Cable (Apple, 1m)", "price": 29, "currency": "USD",
+     "context": "Apple official 1-metre USB-C cable sold in Apple retail stores.",
+     "verify_url": "https://www.apple.com/shop/product/MQKJ3AM/A/usb-c-charge-cable-1-m"},
+    {"id": 8,  "cat": "tech", "name": "PlayStation 5 (Disc Edition)", "price": 499, "currency": "USD",
+     "context": "Sony current-gen gaming console, standard disc version, new.",
+     "verify_url": "https://www.playstation.com/en-us/ps5/"},
+    {"id": 9,  "cat": "tech", "name": "Amazon Echo Dot (5th Gen)", "price": 50, "currency": "USD",
+     "context": "Amazon compact smart speaker with Alexa, latest generation.",
+     "verify_url": "https://www.amazon.com/dp/B09B8SZQXB"},
     # FOOD
-    {"id": 10, "cat": "food", "name": "Starbucks Venti Latte", "price": 7, "currency": "USD", "context": "A large 20oz hot latte at a US Starbucks location."},
-    {"id": 11, "cat": "food", "name": "Big Mac Meal (McDonald's)", "price": 11, "currency": "USD", "context": "Big Mac, medium fries and medium drink at a US McDonald's."},
-    {"id": 12, "cat": "food", "name": "Avocado Toast (brunch cafe)", "price": 18, "currency": "USD", "context": "Single slice avocado toast at a trendy brunch cafe in a major US city."},
-    {"id": 13, "cat": "food", "name": "Chipotle Burrito Bowl", "price": 12, "currency": "USD", "context": "Standard burrito bowl with protein at a US Chipotle restaurant."},
-    {"id": 14, "cat": "food", "name": "Smoothie (Jamba Juice)", "price": 9, "currency": "USD", "context": "A medium original-blend smoothie at a US Jamba Juice location."},
-    {"id": 15, "cat": "food", "name": "Bottle of Water (airport)", "price": 5, "currency": "USD", "context": "500ml branded bottle of water purchased past security at a US airport."},
-    {"id": 16, "cat": "food", "name": "Domino's Large Pepperoni Pizza", "price": 16, "currency": "USD", "context": "Large hand-tossed pepperoni pizza ordered online from Domino's US."},
-    {"id": 17, "cat": "food", "name": "Red Bull (250ml can)", "price": 4, "currency": "USD", "context": "Single 250ml can of Red Bull energy drink at a US convenience store."},
-    {"id": 18, "cat": "food", "name": "Popcorn (movie theatre)", "price": 9, "currency": "USD", "context": "Large bucket of popcorn at a major US cinema chain like AMC or Regal."},
-    {"id": 19, "cat": "food", "name": "Dozen Eggs (grocery store)", "price": 4, "currency": "USD", "context": "One dozen large Grade A eggs at a major US grocery store, 2024 price."},
+    {"id": 10, "cat": "food", "name": "Starbucks Venti Latte", "price": 7, "currency": "USD",
+     "context": "A large 20oz hot latte at a US Starbucks location.",
+     "verify_url": "https://www.starbucks.com/menu/product/407/hot"},
+    {"id": 11, "cat": "food", "name": "Big Mac Meal (McDonald's)", "price": 11, "currency": "USD",
+     "context": "Big Mac, medium fries and medium drink at a US McDonald's.",
+     "verify_url": "https://www.mcdonalds.com/us/en-us/product/big-mac.html"},
+    {"id": 12, "cat": "food", "name": "Avocado Toast (brunch cafe)", "price": 18, "currency": "USD",
+     "context": "Single slice avocado toast at a trendy brunch cafe in a major US city.",
+     "verify_url": "https://www.yelp.com/search?find_desc=avocado+toast&find_loc=New+York"},
+    {"id": 13, "cat": "food", "name": "Chipotle Burrito Bowl", "price": 12, "currency": "USD",
+     "context": "Standard burrito bowl with protein at a US Chipotle restaurant.",
+     "verify_url": "https://www.chipotle.com/menu"},
+    {"id": 14, "cat": "food", "name": "Smoothie (Jamba Juice)", "price": 9, "currency": "USD",
+     "context": "A medium original-blend smoothie at a US Jamba Juice location.",
+     "verify_url": "https://www.jamba.com/menu"},
+    {"id": 15, "cat": "food", "name": "Bottle of Water (airport)", "price": 5, "currency": "USD",
+     "context": "500ml branded bottle of water purchased past security at a US airport.",
+     "verify_url": "https://www.airportgyms.com/airport-water-bottle-prices"},
+    {"id": 16, "cat": "food", "name": "Domino's Large Pepperoni Pizza", "price": 16, "currency": "USD",
+     "context": "Large hand-tossed pepperoni pizza ordered online from Domino's US.",
+     "verify_url": "https://www.dominos.com/en/pages/order/"},
+    {"id": 17, "cat": "food", "name": "Red Bull (250ml can)", "price": 4, "currency": "USD",
+     "context": "Single 250ml can of Red Bull energy drink at a US convenience store.",
+     "verify_url": "https://www.amazon.com/Red-Bull-Energy-Drink-8-4/dp/B00166I3YK"},
+    {"id": 18, "cat": "food", "name": "Popcorn (movie theatre)", "price": 9, "currency": "USD",
+     "context": "Large bucket of popcorn at a major US cinema chain like AMC or Regal.",
+     "verify_url": "https://www.amctheatres.com/food-and-drinks"},
+    {"id": 19, "cat": "food", "name": "Dozen Eggs (grocery store)", "price": 4, "currency": "USD",
+     "context": "One dozen large Grade A eggs at a major US grocery store.",
+     "verify_url": "https://www.instacart.com/store/kroger/search_results?query=dozen+eggs"},
     # FASHION
-    {"id": 20, "cat": "fashion", "name": "Nike Air Force 1 (White)", "price": 110, "currency": "USD", "context": "Nike classic white leather low-top sneaker, sold at Nike retail stores."},
-    {"id": 21, "cat": "fashion", "name": "Levi's 501 Original Jeans", "price": 98, "currency": "USD", "context": "Levi's classic straight-fit 501 jeans, sold at Levi's retail stores worldwide."},
-    {"id": 22, "cat": "fashion", "name": "Rolex Submariner", "price": 9550, "currency": "USD", "context": "Entry-level Rolex dive watch, stainless steel, purchased at an authorised Rolex dealer."},
-    {"id": 23, "cat": "fashion", "name": "Supreme Box Logo Tee", "price": 54, "currency": "USD", "context": "Supreme iconic box logo t-shirt, retail price at Supreme store on drop day."},
-    {"id": 24, "cat": "fashion", "name": "Zara Basic T-Shirt", "price": 26, "currency": "USD", "context": "Plain cotton crew-neck t-shirt from Zara's basic collection."},
-    {"id": 25, "cat": "fashion", "name": "Canada Goose Expedition Parka", "price": 1195, "currency": "USD", "context": "Canada Goose flagship expedition-grade down parka, full retail price."},
-    {"id": 26, "cat": "fashion", "name": "Hermes Birkin (35cm)", "price": 11400, "currency": "USD", "context": "Entry-level Hermes Birkin bag in togo leather, retail price if available."},
-    {"id": 27, "cat": "fashion", "name": "H&M Basic Hoodie", "price": 25, "currency": "USD", "context": "Plain cotton pullover hoodie from H&M basics range."},
-    {"id": 28, "cat": "fashion", "name": "Ray-Ban Wayfarer Sunglasses", "price": 163, "currency": "USD", "context": "Classic Ray-Ban Wayfarer in black, standard size, from Ray-Ban store."},
-    {"id": 29, "cat": "fashion", "name": "Balenciaga Triple S Sneakers", "price": 995, "currency": "USD", "context": "Balenciaga chunky Triple S trainer, full retail at Balenciaga boutique."},
+    {"id": 20, "cat": "fashion", "name": "Nike Air Force 1 (White)", "price": 110, "currency": "USD",
+     "context": "Nike classic white leather low-top sneaker, sold at Nike retail stores.",
+     "verify_url": "https://www.nike.com/t/air-force-1-07-shoes-WrLlWX/CW2288-111"},
+    {"id": 21, "cat": "fashion", "name": "Levi's 501 Original Jeans", "price": 98, "currency": "USD",
+     "context": "Levi's classic straight-fit 501 jeans, sold at Levi's retail stores worldwide.",
+     "verify_url": "https://www.levi.com/US/en_US/clothing/men/jeans/501-original-fit-jeans/p/005010194"},
+    {"id": 22, "cat": "fashion", "name": "Rolex Submariner", "price": 9550, "currency": "USD",
+     "context": "Entry-level Rolex dive watch, stainless steel, at an authorised dealer.",
+     "verify_url": "https://www.rolex.com/watches/submariner.html"},
+    {"id": 23, "cat": "fashion", "name": "Supreme Box Logo Tee", "price": 54, "currency": "USD",
+     "context": "Supreme iconic box logo t-shirt, retail price at Supreme store on drop day.",
+     "verify_url": "https://www.supremenewyork.com/shop/all/t-shirts"},
+    {"id": 24, "cat": "fashion", "name": "Zara Basic T-Shirt", "price": 26, "currency": "USD",
+     "context": "Plain cotton crew-neck t-shirt from Zara's basic collection.",
+     "verify_url": "https://www.zara.com/us/en/basic-t-shirts-l855.html"},
+    {"id": 25, "cat": "fashion", "name": "Canada Goose Expedition Parka", "price": 1195, "currency": "USD",
+     "context": "Canada Goose flagship expedition-grade down parka, full retail price.",
+     "verify_url": "https://www.canadagoose.com/us/en/expedition-parka/"},
+    {"id": 26, "cat": "fashion", "name": "Hermes Birkin (35cm)", "price": 11400, "currency": "USD",
+     "context": "Entry-level Hermes Birkin bag in togo leather, retail price if available.",
+     "verify_url": "https://www.hermes.com/us/en/category/women/bags-and-small-leather-goods/bags/"},
+    {"id": 27, "cat": "fashion", "name": "H&M Basic Hoodie", "price": 25, "currency": "USD",
+     "context": "Plain cotton pullover hoodie from H&M basics range.",
+     "verify_url": "https://www2.hm.com/en_us/men/products/hoodies-sweatshirts.html"},
+    {"id": 28, "cat": "fashion", "name": "Ray-Ban Wayfarer Sunglasses", "price": 163, "currency": "USD",
+     "context": "Classic Ray-Ban Wayfarer in black, standard size, from Ray-Ban store.",
+     "verify_url": "https://www.ray-ban.com/usa/sunglasses/RB2140%20UNISEX%20004-wayfarer/805289602132"},
+    {"id": 29, "cat": "fashion", "name": "Balenciaga Triple S Sneakers", "price": 995, "currency": "USD",
+     "context": "Balenciaga chunky Triple S trainer, full retail at Balenciaga boutique.",
+     "verify_url": "https://www.balenciaga.com/en-us/triple-s-sneaker"},
     # SERVICES
-    {"id": 30, "cat": "services", "name": "Uber (3-mile city ride)", "price": 18, "currency": "USD", "context": "Standard UberX ride, approximately 3 miles in a major US city, surge-free."},
-    {"id": 31, "cat": "services", "name": "Gym Membership (Planet Fitness)", "price": 25, "currency": "USD", "context": "Planet Fitness classic monthly membership, unlimited access, US location."},
-    {"id": 32, "cat": "services", "name": "Haircut (barber, no frills)", "price": 30, "currency": "USD", "context": "Standard men's haircut at a no-frills barber shop in a US city."},
-    {"id": 33, "cat": "services", "name": "Car Wash (full service)", "price": 25, "currency": "USD", "context": "Full-service car wash including interior wipe-down at a US car wash facility."},
-    {"id": 34, "cat": "services", "name": "ATM Fee (out-of-network)", "price": 5, "currency": "USD", "context": "Combined ATM fee for using an out-of-network ATM in the US."},
-    {"id": 35, "cat": "services", "name": "Checked Bag Fee (airline)", "price": 35, "currency": "USD", "context": "First checked bag fee on a major US domestic airline like Delta or United."},
-    {"id": 36, "cat": "services", "name": "iCloud Storage 50GB (monthly)", "price": 1, "currency": "USD", "context": "Apple iCloud+ 50GB storage plan, monthly subscription."},
-    {"id": 37, "cat": "services", "name": "Hotel Parking (per night)", "price": 45, "currency": "USD", "context": "Overnight self-parking fee at a mid-range hotel in a major US city."},
-    {"id": 38, "cat": "services", "name": "LinkedIn Premium (monthly)", "price": 40, "currency": "USD", "context": "LinkedIn Premium Career monthly subscription for job seekers."},
-    {"id": 39, "cat": "services", "name": "Priority Boarding (airline)", "price": 25, "currency": "USD", "context": "Add-on priority boarding fee on a major US airline for a domestic flight."},
+    {"id": 30, "cat": "services", "name": "Uber (3-mile city ride)", "price": 18, "currency": "USD",
+     "context": "Standard UberX ride, approximately 3 miles in a major US city, surge-free.",
+     "verify_url": "https://www.uber.com/us/en/price-estimate/"},
+    {"id": 31, "cat": "services", "name": "Gym Membership (Planet Fitness)", "price": 25, "currency": "USD",
+     "context": "Planet Fitness classic monthly membership, unlimited access, US location.",
+     "verify_url": "https://www.planetfitness.com/gym-memberships"},
+    {"id": 32, "cat": "services", "name": "Haircut (barber, no frills)", "price": 30, "currency": "USD",
+     "context": "Standard men's haircut at a no-frills barber shop in a US city.",
+     "verify_url": "https://www.greatclips.com/haircut-prices"},
+    {"id": 33, "cat": "services", "name": "Car Wash (full service)", "price": 25, "currency": "USD",
+     "context": "Full-service car wash including interior wipe-down at a US car wash facility.",
+     "verify_url": "https://www.yelp.com/search?find_desc=full+service+car+wash&find_loc=United+States"},
+    {"id": 34, "cat": "services", "name": "ATM Fee (out-of-network)", "price": 5, "currency": "USD",
+     "context": "Combined ATM fee for using an out-of-network ATM in the US.",
+     "verify_url": "https://www.bankrate.com/banking/checking/atm-fees-study/"},
+    {"id": 35, "cat": "services", "name": "Checked Bag Fee (airline)", "price": 35, "currency": "USD",
+     "context": "First checked bag fee on a major US domestic airline like Delta or United.",
+     "verify_url": "https://www.delta.com/us/en/baggage/overview"},
+    {"id": 36, "cat": "services", "name": "iCloud Storage 50GB (monthly)", "price": 1, "currency": "USD",
+     "context": "Apple iCloud+ 50GB storage plan, monthly subscription.",
+     "verify_url": "https://support.apple.com/en-us/108047"},
+    {"id": 37, "cat": "services", "name": "Hotel Parking (per night)", "price": 45, "currency": "USD",
+     "context": "Overnight self-parking fee at a mid-range hotel in a major US city.",
+     "verify_url": "https://www.hotels.com/hotel-parking/"},
+    {"id": 38, "cat": "services", "name": "LinkedIn Premium (monthly)", "price": 40, "currency": "USD",
+     "context": "LinkedIn Premium Career monthly subscription for job seekers.",
+     "verify_url": "https://www.linkedin.com/premium/products/"},
+    {"id": 39, "cat": "services", "name": "Priority Boarding (airline)", "price": 25, "currency": "USD",
+     "context": "Add-on priority boarding fee on a major US airline for a domestic flight.",
+     "verify_url": "https://www.united.com/ual/en/us/fly/travel/inflight/boarding.html"},
     # EXPERIENCES
-    {"id": 40, "cat": "experiences", "name": "Disney World 1-Day Ticket", "price": 109, "currency": "USD", "context": "Base one-day single-park ticket to Walt Disney World, Orlando, weekday lowest tier."},
-    {"id": 41, "cat": "experiences", "name": "Taylor Swift Concert Ticket (floor)", "price": 450, "currency": "USD", "context": "Face-value floor ticket to a Taylor Swift Eras Tour show, purchased via Ticketmaster."},
-    {"id": 42, "cat": "experiences", "name": "NYC Yellow Cab (JFK to Manhattan)", "price": 70, "currency": "USD", "context": "Flat-rate yellow taxi from JFK airport to anywhere in Manhattan, excluding tip and tolls."},
-    {"id": 43, "cat": "experiences", "name": "Escape Room (per person)", "price": 35, "currency": "USD", "context": "Per-person price for a standard 60-minute escape room experience in a US city."},
-    {"id": 44, "cat": "experiences", "name": "Museum of Modern Art (MoMA) Ticket", "price": 30, "currency": "USD", "context": "Adult general admission to MoMA in New York City."},
-    {"id": 45, "cat": "experiences", "name": "Coachella Weekend Pass", "price": 549, "currency": "USD", "context": "General admission 3-day weekend pass to Coachella Valley Music Festival, face value."},
-    {"id": 46, "cat": "experiences", "name": "NBA Game (nosebleed seat)", "price": 45, "currency": "USD", "context": "Upper-level seat for a regular season NBA game at a major US arena, face value."},
-    {"id": 47, "cat": "experiences", "name": "Golf Round (public course)", "price": 65, "currency": "USD", "context": "18-hole green fee at a mid-range public golf course in the US, weekend rate."},
-    {"id": 48, "cat": "experiences", "name": "Laser Tag (per session)", "price": 12, "currency": "USD", "context": "Single 15-minute laser tag session at a US entertainment centre."},
-    {"id": 49, "cat": "experiences", "name": "Sky Diving (tandem jump)", "price": 250, "currency": "USD", "context": "Tandem skydive with instructor from 15,000 feet at a US drop zone, introductory price."},
+    {"id": 40, "cat": "experiences", "name": "Disney World 1-Day Ticket", "price": 109, "currency": "USD",
+     "context": "Base one-day single-park ticket to Walt Disney World, Orlando, weekday lowest tier.",
+     "verify_url": "https://www.disneyworld.disney.go.com/admission/tickets/"},
+    {"id": 41, "cat": "experiences", "name": "Taylor Swift Concert Ticket (floor)", "price": 450, "currency": "USD",
+     "context": "Face-value floor ticket to a Taylor Swift Eras Tour show, via Ticketmaster.",
+     "verify_url": "https://www.ticketmaster.com/taylor-swift-tickets/artist/1094215"},
+    {"id": 42, "cat": "experiences", "name": "NYC Yellow Cab (JFK to Manhattan)", "price": 70, "currency": "USD",
+     "context": "Flat-rate yellow taxi from JFK airport to anywhere in Manhattan, excluding tip and tolls.",
+     "verify_url": "https://www.nyc.gov/site/tlc/passengers/taxi-fare.page"},
+    {"id": 43, "cat": "experiences", "name": "Escape Room (per person)", "price": 35, "currency": "USD",
+     "context": "Per-person price for a standard 60-minute escape room experience in a US city.",
+     "verify_url": "https://www.yelp.com/search?find_desc=escape+room&find_loc=New+York%2C+NY"},
+    {"id": 44, "cat": "experiences", "name": "Museum of Modern Art (MoMA) Ticket", "price": 30, "currency": "USD",
+     "context": "Adult general admission to MoMA in New York City.",
+     "verify_url": "https://www.moma.org/visit/"},
+    {"id": 45, "cat": "experiences", "name": "Coachella Weekend Pass", "price": 549, "currency": "USD",
+     "context": "General admission 3-day weekend pass to Coachella Valley Music Festival, face value.",
+     "verify_url": "https://www.coachella.com/tickets"},
+    {"id": 46, "cat": "experiences", "name": "NBA Game (nosebleed seat)", "price": 45, "currency": "USD",
+     "context": "Upper-level seat for a regular season NBA game at a major US arena, face value.",
+     "verify_url": "https://www.stubhub.com/nba-basketball-tickets/"},
+    {"id": 47, "cat": "experiences", "name": "Golf Round (public course)", "price": 65, "currency": "USD",
+     "context": "18-hole green fee at a mid-range public golf course in the US, weekend rate.",
+     "verify_url": "https://www.golfnow.com/"},
+    {"id": 48, "cat": "experiences", "name": "Laser Tag (per session)", "price": 12, "currency": "USD",
+     "context": "Single 15-minute laser tag session at a US entertainment centre.",
+     "verify_url": "https://www.lazerxtreme.com/pricing"},
+    {"id": 49, "cat": "experiences", "name": "Sky Diving (tandem jump)", "price": 250, "currency": "USD",
+     "context": "Tandem skydive with instructor from 15,000 feet at a US drop zone.",
+     "verify_url": "https://www.skydivespace.com/tandem-skydiving-prices/"},
 ]
 
 BOTS = {
@@ -122,7 +225,7 @@ class NameYourPrice(gl.Contract):
         self.recent_count = u256(0)
 
     # ----------------------------------------------------------------
-    # Internal helpers — mirror HTP exactly
+    # Internal helpers
     # ----------------------------------------------------------------
 
     def _read_room(self, room_code: str) -> dict:
@@ -244,7 +347,6 @@ class NameYourPrice(gl.Contract):
                 "is_bot": True
             }
 
-        # Pre-generate ALL bot verdicts for ALL 3 rounds at creation — never mid-game
         bot_submissions_1 = {}
         bot_submissions_2 = {}
         bot_submissions_3 = {}
@@ -333,15 +435,9 @@ class NameYourPrice(gl.Contract):
         room_data["status"] = "voting_1"
         self._write_room(room_code, room_data)
 
-    # FIX: round_num changed from int to str — GenLayer ABI only supports str/bool for public write params.
-    # Frontend sends "1", "2", or "3" as strings. Contract converts internally.
     @gl.public.write
     def submit_verdict(self, room_code: str, player_address: str, round_num: str, verdict: str) -> None:
-        # round_num: "1", "2", or "3" (string — GenLayer ABI compatible)
-        # verdict: "FAIR", "OVERPRICED", or "STEAL"
         room_data = self._read_room(room_code)
-
-        # Map round_num string to expected status
         status_map = {"1": "voting_1", "2": "voting_2", "3": "voting_3"}
         expected_status = status_map.get(round_num)
         if expected_status is None:
@@ -353,7 +449,6 @@ class NameYourPrice(gl.Contract):
         if verdict not in VERDICTS:
             return
 
-        # Map round_num string to submissions key
         subs_key_map = {"1": "submissions_1", "2": "submissions_2", "3": "submissions_3"}
         subs_key = subs_key_map[round_num]
 
@@ -368,8 +463,6 @@ class NameYourPrice(gl.Contract):
 
     @gl.public.write
     def advance_round(self, room_code: str) -> None:
-        # Callable by anyone — mirrors HTP advance_to_voting
-        # voting_1 → voting_2 → voting_3 → judging
         room_data = self._read_room(room_code)
         status = room_data["status"]
 
@@ -386,14 +479,13 @@ class NameYourPrice(gl.Contract):
 
     @gl.public.write
     def calculate_results(self, room_code: str) -> None:
-        # THE ONE AND ONLY AI CALL — mirrors HTP calculate_results exactly
         room_data = self._read_room(room_code)
         if room_data["status"] != "judging":
             return
 
         products = room_data["products"]
 
-        # Merge human and bot submissions for all 3 rounds
+        # Merge human and bot submissions
         all_submissions_1 = {}
         all_submissions_1.update(room_data["submissions_1"])
         all_submissions_1.update(room_data["bot_submissions_1"])
@@ -406,14 +498,15 @@ class NameYourPrice(gl.Contract):
         all_submissions_3.update(room_data["submissions_3"])
         all_submissions_3.update(room_data["bot_submissions_3"])
 
-        # Build prompt — all products + verdicts in one block
+        # Build lines for the prompt (player verdicts)
         lines = []
 
         product_0 = products[0]
         lines.append(
             "Round 1 | Product: " + product_0["name"] +
-            " | Listed Price: $" + str(product_0["price"]) +
-            " | Context: " + product_0["context"]
+            " | Listed Price: $" + str(product_0["price"]) + " " + product_0["currency"] +
+            " | Context: " + product_0["context"] +
+            " | Verify URL: " + product_0.get("verify_url", "")
         )
         for player_id, sub in all_submissions_1.items():
             lines.append("  Player " + player_id + " voted: " + sub["verdict"])
@@ -421,8 +514,9 @@ class NameYourPrice(gl.Contract):
         product_1 = products[1]
         lines.append(
             "Round 2 | Product: " + product_1["name"] +
-            " | Listed Price: $" + str(product_1["price"]) +
-            " | Context: " + product_1["context"]
+            " | Listed Price: $" + str(product_1["price"]) + " " + product_1["currency"] +
+            " | Context: " + product_1["context"] +
+            " | Verify URL: " + product_1.get("verify_url", "")
         )
         for player_id, sub in all_submissions_2.items():
             lines.append("  Player " + player_id + " voted: " + sub["verdict"])
@@ -430,29 +524,91 @@ class NameYourPrice(gl.Contract):
         product_2 = products[2]
         lines.append(
             "Round 3 | Product: " + product_2["name"] +
-            " | Listed Price: $" + str(product_2["price"]) +
-            " | Context: " + product_2["context"]
+            " | Listed Price: $" + str(product_2["price"]) + " " + product_2["currency"] +
+            " | Context: " + product_2["context"] +
+            " | Verify URL: " + product_2.get("verify_url", "")
         )
         for player_id, sub in all_submissions_3.items():
             lines.append("  Player " + player_id + " voted: " + sub["verdict"])
 
         products_text = "\n".join(lines)
 
+        # ── LIVE PRICE VERIFICATION via web fetching ──────────────────────────
+        # For each product, fetch real current market data from the web.
+        # This is the key GenLayer capability: validators fetch the same URL
+        # and reach consensus on what the page says, giving us verified live prices.
+
+        def fetch_price_data():
+            fetched_prices = []
+            for product in products:
+                url = product.get("verify_url", "")
+                name = product["name"]
+                listed_price = product["price"]
+                currency = product["currency"]
+
+                # Attempt live fetch from the product's verification URL
+                live_data = ""
+                if url:
+                    try:
+                        page_content = gl.nondet.get_webpage(url, mode="text")
+                        # Truncate to avoid token overload — first 3000 chars is enough
+                        live_data = page_content[:3000] if page_content else ""
+                    except Exception:
+                        live_data = ""
+
+                fetched_prices.append({
+                    "name": name,
+                    "listed_price": listed_price,
+                    "currency": currency,
+                    "live_data": live_data
+                })
+            return fetched_prices
+
+        fetched = fetch_price_data()
+
+        # Build the web-data context block for the AI prompt
+        web_context_lines = []
+        for i, item in enumerate(fetched):
+            web_context_lines.append(
+                "Product " + str(i + 1) + ": " + item["name"] +
+                " | Listed in game: $" + str(item["listed_price"]) + " " + item["currency"]
+            )
+            if item["live_data"]:
+                web_context_lines.append(
+                    "  Live web data fetched: " + item["live_data"][:800]
+                )
+            else:
+                web_context_lines.append(
+                    "  Live web data: unavailable — use market knowledge to judge"
+                )
+        web_context = "\n".join(web_context_lines)
+
+        # ── MAIN AI JUDGING CALL ──────────────────────────────────────────────
+        # One non-deterministic call that uses both the fetched live data
+        # and the player verdicts to determine correct verdicts and scores.
+
         prompt = (
-            "You are judging a price-guessing game. For each product, determine if the listed price is FAIR, OVERPRICED, or STEAL based on real-world market knowledge.\n"
-            "FAIR = price is reasonable for what you get.\n"
-            "OVERPRICED = price is too high relative to market value.\n"
-            "STEAL = price is surprisingly low, exceptional value.\n\n"
-            "Products and player verdicts:\n" + products_text + "\n\n"
+            "You are judging a price-guessing game. For each product you have:\n"
+            "1. The price that was shown to players during the game.\n"
+            "2. LIVE web data fetched in real time from the product's official page — use this as ground truth.\n\n"
+            "Using the live web data (or your market knowledge if data is unavailable), determine if the game's "
+            "listed price is FAIR, OVERPRICED, or STEAL:\n"
+            "FAIR = the listed price matches or is close to current real-world market price.\n"
+            "OVERPRICED = the listed price is notably higher than what it actually costs today.\n"
+            "STEAL = the listed price is notably lower than current market value — exceptional value.\n\n"
+            "LIVE PRICE DATA (fetched from the web right now):\n" + web_context + "\n\n"
+            "GAME ROUNDS AND PLAYER VERDICTS:\n" + products_text + "\n\n"
             "Scoring rules:\n"
             "- +10 points if player verdict matches correct verdict\n"
             "- +7 minority bonus if fewer than 40 percent of players got it correct\n"
             "- +3 early vote bonus for the first player listed per round\n"
             "- Maximum 20 points per round\n\n"
             "Return ONLY a JSON object starting with { and ending with }. No markdown, no preamble.\n"
-            'Format: {"product_verdicts": [{"product_id": 0, "correct_verdict": "FAIR", "reason": "short sentence"}, {"product_id": 1, "correct_verdict": "OVERPRICED", "reason": "short sentence"}, {"product_id": 2, "correct_verdict": "STEAL", "reason": "short sentence"}], '
+            'Format: {"product_verdicts": [{"product_id": 0, "correct_verdict": "FAIR", "reason": "short sentence citing live data"}, '
+            '{"product_id": 1, "correct_verdict": "OVERPRICED", "reason": "short sentence"}, '
+            '{"product_id": 2, "correct_verdict": "STEAL", "reason": "short sentence"}], '
             '"player_scores": [{"player": "player_id", "round_scores": [10, 7, 0], "total": 17}]}\n'
-            "Include all players in player_scores. Order player_scores by total descending."
+            "Include all players. Order player_scores by total descending."
         )
 
         def generate():
@@ -460,11 +616,11 @@ class NameYourPrice(gl.Contract):
 
         result_raw = gl.eq_principle.prompt_non_comparative(
             generate,
-            task="judge product prices and score players in a price-guessing game",
-            criteria="valid JSON with product_verdicts array and player_scores array"
+            task="verify product prices using live web data and score players in a price-guessing game",
+            criteria="valid JSON with product_verdicts array containing correct verdicts based on live web prices, and player_scores array"
         )
 
-        # Defensive JSON parsing — identical to HTP pattern
+        # Defensive JSON parsing
         product_verdicts = []
         player_scores = []
         try:
@@ -478,7 +634,7 @@ class NameYourPrice(gl.Contract):
             product_verdicts = []
             player_scores = []
 
-        # Build score lookup from AI result
+        # Build score lookup
         score_lookup = {}
         for entry in player_scores:
             pid = entry.get("player", "")
@@ -487,7 +643,7 @@ class NameYourPrice(gl.Contract):
                 "total": entry.get("total", 0)
             }
 
-        # Build verdict lookup for results display
+        # Build verdict lookup
         verdict_lookup = {}
         for v in product_verdicts:
             pid_key = str(v.get("product_id", -1))
@@ -496,10 +652,9 @@ class NameYourPrice(gl.Contract):
                 "reason": v.get("reason", "")
             }
 
-        # Store product verdicts on room for frontend display
         room_data["product_verdicts"] = verdict_lookup
 
-        # Collect all player IDs across all 3 rounds
+        # Collect all players
         all_player_ids = set()
         all_player_ids.update(all_submissions_1.keys())
         all_player_ids.update(all_submissions_2.keys())
@@ -509,7 +664,6 @@ class NameYourPrice(gl.Contract):
         for player_id in all_player_ids:
             score_data = score_lookup.get(player_id)
             if score_data is None:
-                # Try partial match — identical to HTP fallback
                 for pid_key, data in score_lookup.items():
                     if (pid_key == player_id or
                             player_id.startswith(pid_key) or
@@ -522,17 +676,14 @@ class NameYourPrice(gl.Contract):
             total = score_data["total"]
             round_scores = score_data["round_scores"]
 
-            # Update player score on room
             if player_id in room_data["players"]:
                 room_data["players"][player_id]["score"] = total
 
-            # Get player name
             if player_id in room_data["players"]:
                 player_name = room_data["players"][player_id]["name"]
             else:
                 player_name = player_id
 
-            # Count correct verdicts for display
             correct_count = 0
             subs_by_round = [all_submissions_1, all_submissions_2, all_submissions_3]
             for round_idx in range(3):
@@ -557,7 +708,7 @@ class NameYourPrice(gl.Contract):
         room_data["status"] = "completed"
         self._write_room(room_code, room_data)
 
-        # Update player stats — non-bots only, mirror HTP exactly
+        # Update player stats (non-bots only)
         for i, rank_entry in enumerate(final_rankings):
             pid = rank_entry["player"]
             if pid.startswith("bot_"):
@@ -572,18 +723,17 @@ class NameYourPrice(gl.Contract):
                 stats["best_round_score"] = best_round
             self._write_stats(pid, stats)
 
-        # Store in recent games — identical to HTP
+        # Store in recent games
         idx = int(self.recent_count)
         self.recent_game_ids[u256(idx)] = room_code
         self.recent_count = u256(idx + 1)
 
     @gl.public.write
     def finalize_game(self, room_code: str) -> None:
-        # Empty pass — identical to HTP
         pass
 
     # ----------------------------------------------------------------
-    # Public view methods — identical to HTP
+    # Public view methods
     # ----------------------------------------------------------------
 
     @gl.public.view
